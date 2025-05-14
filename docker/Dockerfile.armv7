@@ -1,0 +1,31 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update && apt install -y \
+    build-essential git cmake unzip wget \
+    gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+    pkg-config
+
+WORKDIR /root
+RUN git clone https://github.com/alphacep/vosk-api.git
+
+WORKDIR /root/vosk-api/cmake
+RUN mkdir build-armv7
+WORKDIR /root/vosk-api/cmake/build-armv7
+
+RUN echo "\
+SET(CMAKE_SYSTEM_NAME Linux)\n\
+SET(CMAKE_SYSTEM_PROCESSOR arm)\n\
+SET(CMAKE_C_COMPILER arm-linux-gnueabihf-gcc)\n\
+SET(CMAKE_CXX_COMPILER arm-linux-gnueabihf-g++)\n\
+SET(CMAKE_FIND_ROOT_PATH /usr/arm-linux-gnueabihf)\n\
+SET(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)\n\
+SET(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)\n\
+SET(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)" \
+> toolchain-armv7.cmake
+
+RUN cmake .. -DCMAKE_TOOLCHAIN_FILE=toolchain-armv7.cmake -DCMAKE_BUILD_TYPE=Release \
+ && make -j$(nproc)
+
+CMD ["ls", "-lh", "/root/vosk-api/cmake/build-armv7/libvosk.so"]
